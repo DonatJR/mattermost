@@ -774,3 +774,40 @@ export function hasRequestedPersistentNotifications(priority?: PostPriorityMetad
         priority?.persistent_notifications
     );
 }
+
+// === combit-colored-threads begin ===
+function* colorIndexGenerator() {
+    const startIndex = 1;
+    const endIndex = 10;
+    let current = startIndex - 1;
+
+    while (true) {
+        current++;
+
+        if (current > endIndex) {
+            current = startIndex;
+        }
+
+        yield current;
+    }
+}
+
+const messageColorIdxMap = new Map();
+const channelGeneratorMap = new Map();
+
+export const getBorderLeftColor = (parentId: Post['root_id'], channelId: Post['channel_id']) => {
+    if (messageColorIdxMap.has(parentId)) {
+        return messageColorIdxMap.get(parentId);
+    }
+
+    if (!channelGeneratorMap.has(channelId)) {
+        channelGeneratorMap.set(channelId, colorIndexGenerator());
+    }
+
+    const indexGenerator = channelGeneratorMap.get(channelId);
+    const colorIdx = indexGenerator.next().value;
+    messageColorIdxMap.set(parentId, colorIdx);
+
+    return colorIdx;
+};
+// === combit-colored-threads end ===

@@ -1,15 +1,17 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {CSSProperties} from 'react';
+import React from 'react';
+import type {CSSProperties} from 'react';
 import {FormattedMessage} from 'react-intl';
 
-import {Audit} from '@mattermost/types/audits';
+import type {Audit} from '@mattermost/types/audits';
+
+import type {ActionResult} from 'mattermost-redux/types/actions';
 
 import ComplianceReports from 'components/admin_console/compliance_reports';
 import AuditTable from 'components/audit_table';
 import LoadingScreen from 'components/loading_screen';
-
 import ReloadIcon from 'components/widgets/icons/fa_reload_icon';
 
 type Props = {
@@ -17,7 +19,7 @@ type Props = {
     audits: Audit[];
     isDisabled?: boolean;
     actions: {
-        getAudits: () => Promise<{data: Audit[]}>;
+        getAudits: () => Promise<ActionResult<Audit[]>>;
     };
 };
 
@@ -65,7 +67,7 @@ export default class Audits extends React.PureComponent<Props, State> {
                 </h4>
                 <button
                     type='submit'
-                    className='btn btn-link pull-right'
+                    className='btn btn-tertiary pull-right'
                     onClick={this.reload}
                 >
                     <ReloadIcon/>

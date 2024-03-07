@@ -4,22 +4,23 @@
 import React from 'react';
 import {FormattedMessage} from 'react-intl';
 
-import {ActionResult} from 'mattermost-redux/types/actions';
-import {ServerError} from '@mattermost/types/errors';
-import {UserProfile, UsersStats, GetFilteredUsersStatsOpts} from '@mattermost/types/users';
-import {Channel, ChannelMembership} from '@mattermost/types/channels';
-import GeneralConstants from 'mattermost-redux/constants/general';
+import type {Channel, ChannelMembership} from '@mattermost/types/channels';
+import type {UserProfile, GetFilteredUsersStatsOpts} from '@mattermost/types/users';
 
-import {t} from 'utils/i18n';
-import Constants, {ModalIdentifiers} from 'utils/constants';
+import GeneralConstants from 'mattermost-redux/constants/general';
+import type {ActionResult} from 'mattermost-redux/types/actions';
+
 import {trackEvent} from 'actions/telemetry_actions.jsx';
 
-import AdminPanel from 'components/widgets/admin_console/admin_panel';
+import type {FilterOptions} from 'components/admin_console/filter/filter';
 import UserGrid from 'components/admin_console/user_grid/user_grid';
-import {BaseMembership} from 'components/admin_console/user_grid/user_grid_role_dropdown';
+import type {BaseMembership} from 'components/admin_console/user_grid/user_grid_role_dropdown';
 import ChannelInviteModal from 'components/channel_invite_modal';
 import ToggleModalButton from 'components/toggle_modal_button';
-import {FilterOptions} from 'components/admin_console/filter/filter';
+import AdminPanel from 'components/widgets/admin_console/admin_panel';
+
+import Constants, {ModalIdentifiers} from 'utils/constants';
+import {t} from 'utils/i18n';
 
 type Props = {
     channelId: string;
@@ -43,21 +44,12 @@ type Props = {
     isDisabled?: boolean;
 
     actions: {
-        getChannelStats: (channelId: string) => Promise<{
-            data: boolean;
-        }>;
-        loadProfilesAndReloadChannelMembers: (page: number, perPage: number, channelId?: string, sort?: string, options?: {[key: string]: any}) => Promise<{
-            data: boolean;
-        }>;
-        searchProfilesAndChannelMembers: (term: string, options?: {[key: string]: any}) => Promise<{
-            data: boolean;
-        }>;
-        getFilteredUsersStats: (filters: GetFilteredUsersStatsOpts) => Promise<{
-            data?: UsersStats;
-            error?: ServerError;
-        }>;
-        setUserGridSearch: (term: string) => ActionResult;
-        setUserGridFilters: (filters: GetFilteredUsersStatsOpts) => ActionResult;
+        getChannelStats: (channelId: string) => Promise<ActionResult>;
+        loadProfilesAndReloadChannelMembers: (page: number, perPage: number, channelId?: string, sort?: string, options?: {[key: string]: any}) => Promise<ActionResult>;
+        searchProfilesAndChannelMembers: (term: string, options?: {[key: string]: any}) => Promise<ActionResult>;
+        getFilteredUsersStats: (filters: GetFilteredUsersStatsOpts) => Promise<ActionResult>;
+        setUserGridSearch: (term: string) => void;
+        setUserGridFilters: (filters: GetFilteredUsersStatsOpts) => void;
     };
 }
 

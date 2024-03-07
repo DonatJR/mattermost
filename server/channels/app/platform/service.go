@@ -43,7 +43,8 @@ type PlatformService struct {
 
 	configStore *config.Store
 
-	filestore filestore.FileBackend
+	filestore       filestore.FileBackend
+	exportFilestore filestore.FileBackend
 
 	cacheProvider cache.Provider
 	statusCache   cache.Cache
@@ -193,20 +194,24 @@ func New(sc ServiceConfig, options ...Option) (*PlatformService, error) {
 	// Depends on Step 0 (config), 1 (cacheProvider), 3 (search engine), 5 (metrics) and cluster.
 	if ps.newStore == nil {
 		ps.newStore = func() (store.Store, error) {
-			ps.sqlStore = sqlstore.New(ps.Config().SqlSettings, ps.metricsIFace)
-
-			lcl, err2 := localcachelayer.NewLocalCacheLayer(
-				retrylayer.New(ps.sqlStore),
-				ps.metricsIFace,
-				ps.clusterIFace,
-				ps.cacheProvider,
-			)
-			if err2 != nil {
-				return nil, fmt.Errorf("cannot create local cache layer: %w", err2)
+			// The layer cake is as follows: (From bottom to top)
+			// SQL layer
+			// |
+			// Retry layer
+			// |
+			// Search layer
+			// |
+			// Timer layer
+			// |
+			// Cache layer
+			var err error
+			ps.sqlStore, err = sqlstore.New(ps.Config().SqlSettings, ps.Log(), ps.metricsIFace)
+			if err != nil {
+				return nil, err
 			}
 
 			searchStore := searchlayer.NewSearchLayer(
-				lcl,
+				retrylayer.New(ps.sqlStore),
 				ps.SearchEngine,
 				ps.Config(),
 			)
@@ -215,16 +220,23 @@ func New(sc ServiceConfig, options ...Option) (*PlatformService, error) {
 				searchStore.UpdateConfig(cfg)
 			})
 
+			lcl, err2 := localcachelayer.NewLocalCacheLayer(
+				timerlayer.New(searchStore, ps.metricsIFace),
+				ps.metricsIFace,
+				ps.clusterIFace,
+				ps.cacheProvider,
+			)
+			if err2 != nil {
+				return nil, fmt.Errorf("cannot create local cache layer: %w", err2)
+			}
+
 			license := ps.License()
 			ps.sqlStore.UpdateLicense(license)
 			ps.AddLicenseListener(func(oldLicense, newLicense *model.License) {
 				ps.sqlStore.UpdateLicense(newLicense)
 			})
 
-			return timerlayer.New(
-				searchStore,
-				ps.metricsIFace,
-			), nil
+			return lcl, nil
 		}
 	}
 
@@ -238,6 +250,19 @@ func New(sc ServiceConfig, options ...Option) (*PlatformService, error) {
 		}
 
 		ps.filestore = backend
+	}
+
+	if ps.exportFilestore == nil {
+		ps.exportFilestore = ps.filestore
+		if *ps.Config().FileSettings.DedicatedExportStore {
+			mlog.Info("Setting up dedicated export filestore", mlog.String("driver_name", *ps.Config().FileSettings.ExportDriverName))
+			backend, errFileBack := filestore.NewExportFileBackend(filestore.NewExportFileBackendSettingsFromConfig(&ps.Config().FileSettings, license != nil && *license.Features.Compliance, false))
+			if errFileBack != nil {
+				return nil, fmt.Errorf("failed to initialize export filebackend: %w", errFileBack)
+			}
+
+			ps.exportFilestore = backend
+		}
 	}
 
 	var err error
@@ -298,11 +323,10 @@ func New(sc ServiceConfig, options ...Option) (*PlatformService, error) {
 	}
 
 	ps.AddLicenseListener(func(oldLicense, newLicense *model.License) {
-		if (oldLicense == nil && newLicense == nil) || !ps.startMetrics {
-			return
-		}
+		wasLicensed := (oldLicense != nil && *oldLicense.Features.Metrics) || (model.BuildNumber == "dev")
+		isLicensed := (newLicense != nil && *newLicense.Features.Metrics) || (model.BuildNumber == "dev")
 
-		if oldLicense != nil && newLicense != nil && *oldLicense.Features.Metrics == *newLicense.Features.Metrics {
+		if wasLicensed == isLicensed || !ps.startMetrics {
 			return
 		}
 
@@ -319,8 +343,8 @@ func New(sc ServiceConfig, options ...Option) (*PlatformService, error) {
 	return ps, nil
 }
 
-func (ps *PlatformService) Start() error {
-	ps.hubStart()
+func (ps *PlatformService) Start(broadcastHooks map[string]BroadcastHook) error {
+	ps.hubStart(broadcastHooks)
 
 	ps.configListenerId = ps.AddConfigListener(func(_, _ *model.Config) {
 		ps.regenerateClientConfig()
@@ -346,7 +370,6 @@ func (ps *PlatformService) Start() error {
 		ps.Go(func() {
 			ps.Publish(message)
 		})
-
 	})
 	return nil
 }
@@ -482,4 +505,8 @@ func (ps *PlatformService) GetPluginStatuses() (model.PluginStatuses, *model.App
 
 func (ps *PlatformService) FileBackend() filestore.FileBackend {
 	return ps.filestore
+}
+
+func (ps *PlatformService) ExportFileBackend() filestore.FileBackend {
+	return ps.exportFilestore
 }

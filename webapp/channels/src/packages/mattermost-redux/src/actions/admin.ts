@@ -3,32 +3,40 @@
 
 import {batchActions} from 'redux-batched-actions';
 
+import type {LogFilter, SchemaMigration} from '@mattermost/types/admin';
+import type {Audit} from '@mattermost/types/audits';
+import type {
+    Channel,
+    ChannelSearchOpts,
+} from '@mattermost/types/channels';
+import type {Compliance} from '@mattermost/types/compliance';
+import type {AdminConfig, AllowedIPRange, License} from '@mattermost/types/config';
+import type {
+    CreateDataRetentionCustomPolicy,
+    DataRetentionCustomPolicies,
+    GetDataRetentionCustomPoliciesRequest,
+    PatchDataRetentionCustomPolicy,
+} from '@mattermost/types/data_retention';
+import type {ServerError} from '@mattermost/types/errors';
+import type {GroupSearchOpts, MixedUnlinkedGroup} from '@mattermost/types/groups';
+import type {SamlMetadataResponse} from '@mattermost/types/saml';
+import type {CompleteOnboardingRequest} from '@mattermost/types/setup';
+import type {
+    Team,
+    TeamSearchOpts,
+} from '@mattermost/types/teams';
+
 import {AdminTypes} from 'mattermost-redux/action_types';
-import {ActionFunc, DispatchFunc, GetStateFunc} from 'mattermost-redux/types/actions';
+import {getUsersLimits} from 'mattermost-redux/actions/limits';
 import {Client4} from 'mattermost-redux/client';
+import type {ActionFunc, DispatchFunc, GetStateFunc, NewActionFuncAsync} from 'mattermost-redux/types/actions';
+
+import {logError} from './errors';
+import {bindClientFunc, forceLogoutIfNecessary} from './helpers';
 
 import {General} from '../constants';
 
-import {Compliance} from '@mattermost/types/compliance';
-import {GroupSearchOpts} from '@mattermost/types/groups';
-import {
-    CreateDataRetentionCustomPolicy,
-} from '@mattermost/types/data_retention';
-import {
-    TeamSearchOpts,
-} from '@mattermost/types/teams';
-import {
-    ChannelSearchOpts,
-} from '@mattermost/types/channels';
-
-import {CompleteOnboardingRequest} from '@mattermost/types/setup';
-import {LogFilter} from '@mattermost/types/admin';
-import {ServerError} from '@mattermost/types/errors';
-
-import {bindClientFunc, forceLogoutIfNecessary} from './helpers';
-import {logError} from './errors';
-
-export function getLogs({serverNames = [], logLevels = [], dateFrom, dateTo}: LogFilter): ActionFunc {
+export function getLogs({serverNames = [], logLevels = [], dateFrom, dateTo}: LogFilter): NewActionFuncAsync<string[]> {
     const logFilter = {
         server_names: serverNames,
         log_levels: logLevels,
@@ -41,10 +49,10 @@ export function getLogs({serverNames = [], logLevels = [], dateFrom, dateTo}: Lo
         params: [
             logFilter,
         ],
-    });
+    }) as any; // HARRISONTODO Type bindClientFunc
 }
 
-export function getPlainLogs(page = 0, perPage: number = General.LOGS_PAGE_SIZE_DEFAULT): ActionFunc {
+export function getPlainLogs(page = 0, perPage: number = General.LOGS_PAGE_SIZE_DEFAULT): NewActionFuncAsync<string[]> {
     return bindClientFunc({
         clientFunc: Client4.getPlainLogs,
         onSuccess: [AdminTypes.RECEIVED_PLAIN_LOGS],
@@ -52,10 +60,10 @@ export function getPlainLogs(page = 0, perPage: number = General.LOGS_PAGE_SIZE_
             page,
             perPage,
         ],
-    });
+    }) as any; // HARRISONTODO Type bindClientFunc
 }
 
-export function getAudits(page = 0, perPage: number = General.PAGE_SIZE_DEFAULT): ActionFunc {
+export function getAudits(page = 0, perPage: number = General.PAGE_SIZE_DEFAULT): NewActionFuncAsync<Audit[]> {
     return bindClientFunc({
         clientFunc: Client4.getAudits,
         onSuccess: [AdminTypes.RECEIVED_AUDITS],
@@ -63,7 +71,7 @@ export function getAudits(page = 0, perPage: number = General.PAGE_SIZE_DEFAULT)
             page,
             perPage,
         ],
-    });
+    }) as any; // HARRISONTODO Type bindClientFunc
 }
 
 export function getConfig(): ActionFunc {
@@ -73,14 +81,14 @@ export function getConfig(): ActionFunc {
     });
 }
 
-export function updateConfig(config: Record<string, unknown>): ActionFunc {
+export function updateConfig(config: Record<string, unknown>): NewActionFuncAsync<Partial<AdminConfig>> {
     return bindClientFunc({
         clientFunc: Client4.updateConfig,
         onSuccess: [AdminTypes.RECEIVED_CONFIG],
         params: [
             config,
         ],
-    });
+    }) as any; // HARRISONTODO Type bindClientFunc
 }
 
 export function reloadConfig(): ActionFunc {
@@ -135,7 +143,7 @@ export function recycleDatabase(): ActionFunc {
     });
 }
 
-export function createComplianceReport(job: Partial<Compliance>): ActionFunc {
+export function createComplianceReport(job: Partial<Compliance>): NewActionFuncAsync<Compliance> {
     return bindClientFunc({
         clientFunc: Client4.createComplianceReport,
         onRequest: AdminTypes.CREATE_COMPLIANCE_REQUEST,
@@ -144,7 +152,7 @@ export function createComplianceReport(job: Partial<Compliance>): ActionFunc {
         params: [
             job,
         ],
-    });
+    }) as any; // HARRISONTODO Type bindClientFunc
 }
 
 export function getComplianceReport(reportId: string): ActionFunc {
@@ -157,7 +165,7 @@ export function getComplianceReport(reportId: string): ActionFunc {
     });
 }
 
-export function getComplianceReports(page = 0, perPage: number = General.PAGE_SIZE_DEFAULT): ActionFunc {
+export function getComplianceReports(page = 0, perPage: number = General.PAGE_SIZE_DEFAULT): NewActionFuncAsync<Compliance[]> {
     return bindClientFunc({
         clientFunc: Client4.getComplianceReports,
         onSuccess: [AdminTypes.RECEIVED_COMPLIANCE_REPORTS],
@@ -165,7 +173,7 @@ export function getComplianceReports(page = 0, perPage: number = General.PAGE_SI
             page,
             perPage,
         ],
-    });
+    }) as any; // HARRISONTODO Type bindClientFunc
 }
 
 export function uploadBrandImage(imageData: File): ActionFunc {
@@ -202,7 +210,7 @@ export function syncLdap(): ActionFunc {
     });
 }
 
-export function getLdapGroups(page = 0, perPage: number = General.PAGE_SIZE_MAXIMUM, opts: GroupSearchOpts = {q: ''}): ActionFunc {
+export function getLdapGroups(page = 0, perPage: number = General.PAGE_SIZE_MAXIMUM, opts: GroupSearchOpts = {q: ''}): NewActionFuncAsync<{count: number; groups: MixedUnlinkedGroup[]}> {
     return bindClientFunc({
         clientFunc: Client4.getLdapGroups,
         onSuccess: [AdminTypes.RECEIVED_LDAP_GROUPS],
@@ -211,11 +219,11 @@ export function getLdapGroups(page = 0, perPage: number = General.PAGE_SIZE_MAXI
             perPage,
             opts,
         ],
-    });
+    }) as any; // HARRISONTODO Type bindClientFunc
 }
 
-export function linkLdapGroup(key: string): ActionFunc {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+export function linkLdapGroup(key: string): NewActionFuncAsync {
+    return async (dispatch, getState) => {
         let data;
         try {
             data = await Client4.linkLdapGroup(key);
@@ -240,8 +248,8 @@ export function linkLdapGroup(key: string): ActionFunc {
     };
 }
 
-export function unlinkLdapGroup(key: string): ActionFunc {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+export function unlinkLdapGroup(key: string): NewActionFuncAsync {
+    return async (dispatch, getState) => {
         try {
             await Client4.unlinkLdapGroup(key);
         } catch (error) {
@@ -357,19 +365,29 @@ export function purgeElasticsearchIndexes(): ActionFunc {
     });
 }
 
-export function uploadLicense(fileData: File): ActionFunc {
+export function uploadLicense(fileData: File): NewActionFuncAsync<License> {
     return bindClientFunc({
         clientFunc: Client4.uploadLicense,
         params: [
             fileData,
         ],
-    });
+    }) as any; // HARRISONTODO Type bindClientFunc
 }
 
-export function removeLicense(): ActionFunc {
-    return bindClientFunc({
-        clientFunc: Client4.removeLicense,
-    });
+export function removeLicense(): NewActionFuncAsync<boolean> {
+    return async (dispatch, getState) => {
+        try {
+            await Client4.removeLicense();
+        } catch (error) {
+            forceLogoutIfNecessary(error as ServerError, dispatch, getState);
+            dispatch(logError(error as ServerError));
+            return {error: error as ServerError};
+        }
+
+        await dispatch(getUsersLimits());
+
+        return {data: true};
+    };
 }
 
 export function getPrevTrialLicense(): ActionFunc {
@@ -472,8 +490,8 @@ export function getPluginStatuses(): ActionFunc {
     });
 }
 
-export function removePlugin(pluginId: string): ActionFunc {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+export function removePlugin(pluginId: string): NewActionFuncAsync {
+    return async (dispatch, getState) => {
         try {
             await Client4.removePlugin(pluginId);
         } catch (error) {
@@ -491,8 +509,8 @@ export function removePlugin(pluginId: string): ActionFunc {
     };
 }
 
-export function enablePlugin(pluginId: string): ActionFunc {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+export function enablePlugin(pluginId: string): NewActionFuncAsync {
+    return async (dispatch, getState) => {
         try {
             await Client4.enablePlugin(pluginId);
         } catch (error) {
@@ -507,8 +525,8 @@ export function enablePlugin(pluginId: string): ActionFunc {
     };
 }
 
-export function disablePlugin(pluginId: string): ActionFunc {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+export function disablePlugin(pluginId: string): NewActionFuncAsync {
+    return async (dispatch, getState) => {
         dispatch({type: AdminTypes.DISABLE_PLUGIN_REQUEST, data: pluginId});
 
         try {
@@ -525,40 +543,27 @@ export function disablePlugin(pluginId: string): ActionFunc {
     };
 }
 
-export function getSamlMetadataFromIdp(samlMetadataURL: string): ActionFunc {
+export function getSamlMetadataFromIdp(samlMetadataURL: string): NewActionFuncAsync<SamlMetadataResponse> {
     return bindClientFunc({
         clientFunc: Client4.getSamlMetadataFromIdp,
         onSuccess: AdminTypes.RECEIVED_SAML_METADATA_RESPONSE,
         params: [
             samlMetadataURL,
         ],
-    });
+    }) as any; // HARRISONTODO Type bindClientFunc
 }
 
-export function setSamlIdpCertificateFromMetadata(certData: string): ActionFunc {
+export function setSamlIdpCertificateFromMetadata(certData: string): NewActionFuncAsync {
     return bindClientFunc({
         clientFunc: Client4.setSamlIdpCertificateFromMetadata,
         params: [
             certData,
         ],
-    });
+    }) as any; // HARRISONTODO Type bindClientFunc
 }
 
-export function sendWarnMetricAck(warnMetricId: string, forceAck: boolean) {
-    return async (dispatch: DispatchFunc) => {
-        try {
-            Client4.trackEvent('api', 'api_request_send_metric_ack', {warnMetricId});
-            await Client4.sendWarnMetricAck(warnMetricId, forceAck);
-            return {data: true};
-        } catch (e) {
-            dispatch(logError(e as ServerError));
-            return {error: (e as ServerError).message};
-        }
-    };
-}
-
-export function getDataRetentionCustomPolicies(page = 0, perPage = 10): ActionFunc {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+export function getDataRetentionCustomPolicies(page = 0, perPage = 10): NewActionFuncAsync<GetDataRetentionCustomPoliciesRequest> {
+    return async (dispatch, getState) => {
         let data;
         try {
             data = await Client4.getDataRetentionCustomPolicies(page, perPage);
@@ -581,8 +586,8 @@ export function getDataRetentionCustomPolicies(page = 0, perPage = 10): ActionFu
     };
 }
 
-export function getDataRetentionCustomPolicy(id: string): ActionFunc {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+export function getDataRetentionCustomPolicy(id: string): NewActionFuncAsync<DataRetentionCustomPolicies> {
+    return async (dispatch, getState) => {
         let data;
         try {
             data = await Client4.getDataRetentionCustomPolicy(id);
@@ -605,8 +610,8 @@ export function getDataRetentionCustomPolicy(id: string): ActionFunc {
     };
 }
 
-export function deleteDataRetentionCustomPolicy(id: string): ActionFunc {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+export function deleteDataRetentionCustomPolicy(id: string): NewActionFuncAsync<{id: string}> {
+    return async (dispatch, getState) => {
         try {
             await Client4.deleteDataRetentionCustomPolicy(id);
         } catch (error) {
@@ -630,8 +635,8 @@ export function deleteDataRetentionCustomPolicy(id: string): ActionFunc {
     };
 }
 
-export function getDataRetentionCustomPolicyTeams(id: string, page = 0, perPage: number = General.TEAMS_CHUNK_SIZE): ActionFunc {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+export function getDataRetentionCustomPolicyTeams(id: string, page = 0, perPage: number = General.TEAMS_CHUNK_SIZE): NewActionFuncAsync<Team[]> {
+    return async (dispatch, getState) => {
         let data;
         try {
             data = await Client4.getDataRetentionCustomPolicyTeams(id, page, perPage);
@@ -654,8 +659,8 @@ export function getDataRetentionCustomPolicyTeams(id: string, page = 0, perPage:
     };
 }
 
-export function getDataRetentionCustomPolicyChannels(id: string, page = 0, perPage: number = General.TEAMS_CHUNK_SIZE): ActionFunc {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+export function getDataRetentionCustomPolicyChannels(id: string, page = 0, perPage: number = General.TEAMS_CHUNK_SIZE): NewActionFuncAsync<{channels: Channel[]; total_count: number}> {
+    return async (dispatch, getState) => {
         let data;
         try {
             data = await Client4.getDataRetentionCustomPolicyChannels(id, page, perPage);
@@ -678,7 +683,7 @@ export function getDataRetentionCustomPolicyChannels(id: string, page = 0, perPa
     };
 }
 
-export function searchDataRetentionCustomPolicyTeams(id: string, term: string, opts: TeamSearchOpts): ActionFunc {
+export function searchDataRetentionCustomPolicyTeams(id: string, term: string, opts: TeamSearchOpts): NewActionFuncAsync<DataRetentionCustomPolicies> {
     return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
         let data;
         try {
@@ -702,8 +707,8 @@ export function searchDataRetentionCustomPolicyTeams(id: string, term: string, o
     };
 }
 
-export function searchDataRetentionCustomPolicyChannels(id: string, term: string, opts: ChannelSearchOpts): ActionFunc {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+export function searchDataRetentionCustomPolicyChannels(id: string, term: string, opts: ChannelSearchOpts): NewActionFuncAsync<DataRetentionCustomPolicies> {
+    return async (dispatch, getState) => {
         let data;
         try {
             data = await Client4.searchDataRetentionCustomPolicyChannels(id, term, opts);
@@ -726,8 +731,8 @@ export function searchDataRetentionCustomPolicyChannels(id: string, term: string
     };
 }
 
-export function createDataRetentionCustomPolicy(policy: CreateDataRetentionCustomPolicy): ActionFunc {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+export function createDataRetentionCustomPolicy(policy: CreateDataRetentionCustomPolicy): NewActionFuncAsync<DataRetentionCustomPolicies> {
+    return async (dispatch, getState) => {
         let data;
         try {
             data = await Client4.createDataRetentionPolicy(policy);
@@ -744,8 +749,8 @@ export function createDataRetentionCustomPolicy(policy: CreateDataRetentionCusto
     };
 }
 
-export function updateDataRetentionCustomPolicy(id: string, policy: CreateDataRetentionCustomPolicy): ActionFunc {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+export function updateDataRetentionCustomPolicy(id: string, policy: PatchDataRetentionCustomPolicy): NewActionFuncAsync<DataRetentionCustomPolicies> {
+    return async (dispatch, getState) => {
         let data;
         try {
             data = await Client4.updateDataRetentionPolicy(id, policy);
@@ -762,7 +767,7 @@ export function updateDataRetentionCustomPolicy(id: string, policy: CreateDataRe
     };
 }
 
-export function addDataRetentionCustomPolicyTeams(id: string, teams: string[]): ActionFunc {
+export function addDataRetentionCustomPolicyTeams(id: string, teams: string[]): NewActionFuncAsync<DataRetentionCustomPolicies> {
     return bindClientFunc({
         clientFunc: Client4.addDataRetentionPolicyTeams,
         onSuccess: AdminTypes.ADD_DATA_RETENTION_CUSTOM_POLICY_TEAMS_SUCCESS,
@@ -770,11 +775,11 @@ export function addDataRetentionCustomPolicyTeams(id: string, teams: string[]): 
             id,
             teams,
         ],
-    });
+    }) as any; // HARRISONTODO Type bindClientFunc
 }
 
-export function removeDataRetentionCustomPolicyTeams(id: string, teams: string[]): ActionFunc {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+export function removeDataRetentionCustomPolicyTeams(id: string, teams: string[]): NewActionFuncAsync<{teams: string[]}> {
+    return async (dispatch, getState) => {
         try {
             await Client4.removeDataRetentionPolicyTeams(id, teams);
         } catch (error) {
@@ -798,7 +803,7 @@ export function removeDataRetentionCustomPolicyTeams(id: string, teams: string[]
     };
 }
 
-export function addDataRetentionCustomPolicyChannels(id: string, channels: string[]): ActionFunc {
+export function addDataRetentionCustomPolicyChannels(id: string, channels: string[]): NewActionFuncAsync<DataRetentionCustomPolicies> {
     return bindClientFunc({
         clientFunc: Client4.addDataRetentionPolicyChannels,
         onSuccess: AdminTypes.ADD_DATA_RETENTION_CUSTOM_POLICY_CHANNELS_SUCCESS,
@@ -806,11 +811,11 @@ export function addDataRetentionCustomPolicyChannels(id: string, channels: strin
             id,
             channels,
         ],
-    });
+    }) as any; // HARRISONTODO Type bindClientFunc
 }
 
-export function removeDataRetentionCustomPolicyChannels(id: string, channels: string[]): ActionFunc {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
+export function removeDataRetentionCustomPolicyChannels(id: string, channels: string[]): NewActionFuncAsync<{channels: string[]}> {
+    return async (dispatch, getState) => {
         try {
             await Client4.removeDataRetentionPolicyChannels(id, channels);
         } catch (error) {
@@ -841,8 +846,29 @@ export function completeSetup(completeSetup: CompleteOnboardingRequest): ActionF
     });
 }
 
-export function getAppliedSchemaMigrations(): ActionFunc {
+export function getAppliedSchemaMigrations(): NewActionFuncAsync<SchemaMigration[]> {
     return bindClientFunc({
         clientFunc: Client4.getAppliedSchemaMigrations,
+    }) as any; // HARRISONTODO Type bindClientFunc
+}
+
+export function getIPFilters() {
+    return bindClientFunc({
+        clientFunc: Client4.getIPFilters,
+        params: [],
+    });
+}
+
+export function getCurrentIP() {
+    return bindClientFunc({
+        clientFunc: Client4.getCurrentIP,
+        params: [],
+    });
+}
+
+export function applyIPFilters(ipFilters: AllowedIPRange[]) {
+    return bindClientFunc({
+        clientFunc: Client4.applyIPFilters,
+        params: [ipFilters],
     });
 }

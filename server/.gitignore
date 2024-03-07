@@ -21,9 +21,6 @@ config/active.dat
 config/logging.json
 /plugins
 
-# Enterprise & products imports files
-channels/imports/imports.go
-
 # go.work file
 go.work
 go.work.sum
@@ -104,8 +101,6 @@ api/data/*
 api4/data/*
 app/data/*
 
-/enterprise
-
 cover.out
 ecover.out
 mmctlcover.out
@@ -113,6 +108,7 @@ cprofile.out
 *.test
 webapp/coverage
 /report.xml
+/gotestsum.json
 
 .agignore
 .ctags

@@ -1,24 +1,21 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {PreferenceType} from '@mattermost/types/preferences';
+import type {PreferenceType} from '@mattermost/types/preferences';
 
 import {PreferenceTypes} from 'mattermost-redux/action_types';
-
 import {Client4} from 'mattermost-redux/client';
-
-import {getMyPreferences as getMyPreferencesSelector, makeGetCategory, Theme} from 'mattermost-redux/selectors/entities/preferences';
+import {getMyPreferences as getMyPreferencesSelector, makeGetCategory} from 'mattermost-redux/selectors/entities/preferences';
+import type {Theme} from 'mattermost-redux/selectors/entities/preferences';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-
-import {GetStateFunc, DispatchFunc, ActionFunc} from 'mattermost-redux/types/actions';
-
+import type {GetStateFunc, DispatchFunc, ActionFunc} from 'mattermost-redux/types/actions';
 import {getPreferenceKey} from 'mattermost-redux/utils/preference_utils';
-
-import {Preferences} from '../constants';
 
 import {getChannelAndMyMember, getMyChannelMember} from './channels';
 import {bindClientFunc} from './helpers';
 import {getProfilesByIds, getProfilesInChannel} from './users';
+
+import {Preferences} from '../constants';
 
 export function deletePreferences(userId: string, preferences: PreferenceType[]): ActionFunc {
     return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
@@ -68,8 +65,8 @@ export function makeDirectChannelVisibleIfNecessary(otherUserId: string): Action
                 name: otherUserId,
                 value: 'true',
             };
-            getProfilesByIds([otherUserId])(dispatch, getState);
-            savePreferences(currentUserId, [preference])(dispatch);
+            dispatch(getProfilesByIds([otherUserId]));
+            dispatch(savePreferences(currentUserId, [preference]));
         }
 
         return {data: true};
@@ -94,13 +91,13 @@ export function makeGroupMessageVisibleIfNecessary(channelId: string): ActionFun
             };
 
             if (channels[channelId]) {
-                getMyChannelMember(channelId)(dispatch, getState);
+                dispatch(getMyChannelMember(channelId));
             } else {
-                getChannelAndMyMember(channelId)(dispatch, getState);
+                dispatch(getChannelAndMyMember(channelId));
             }
 
-            getProfilesInChannel(channelId, 0)(dispatch, getState);
-            savePreferences(currentUserId, [preference])(dispatch);
+            dispatch(getProfilesInChannel(channelId, 0));
+            dispatch(savePreferences(currentUserId, [preference]));
         }
 
         return {data: true};
@@ -115,20 +112,6 @@ export function setActionsMenuInitialisationState(initializationState: Record<st
             user_id: currentUserId,
             category: Preferences.CATEGORY_ACTIONS_MENU,
             name: Preferences.NAME_ACTIONS_MENU_TUTORIAL_STATE,
-            value: JSON.stringify(initializationState),
-        };
-        await dispatch(savePreferences(currentUserId, [preference]));
-    };
-}
-
-export function setInsightsInitialisationState(initializationState: Record<string, boolean>) {
-    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
-        const state = getState();
-        const currentUserId = getCurrentUserId(state);
-        const preference: PreferenceType = {
-            user_id: currentUserId,
-            category: Preferences.CATEGORY_INSIGHTS,
-            name: Preferences.NAME_INSIGHTS_TUTORIAL_STATE,
             value: JSON.stringify(initializationState),
         };
         await dispatch(savePreferences(currentUserId, [preference]));
@@ -182,7 +165,7 @@ export function saveTheme(teamId: string, theme: Theme): ActionFunc {
             value: JSON.stringify(theme),
         };
 
-        await savePreferences(currentUserId, [preference])(dispatch);
+        await dispatch(savePreferences(currentUserId, [preference]));
         return {data: true};
     };
 }
@@ -196,7 +179,7 @@ export function deleteTeamSpecificThemes(): ActionFunc {
 
         const toDelete = themePreferences.filter((pref) => pref.name !== '');
         if (toDelete.length > 0) {
-            await deletePreferences(currentUserId, toDelete)(dispatch, getState);
+            await dispatch(deletePreferences(currentUserId, toDelete));
         }
 
         return {data: true};

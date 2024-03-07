@@ -1,8 +1,8 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React from 'react';
 import {shallow} from 'enzyme';
+import React from 'react';
 
 import DataRetentionSettings from './data_retention_settings';
 
@@ -12,15 +12,17 @@ describe('components/admin_console/data_retention_settings/data_retention_settin
             DataRetentionSettings: {
                 EnableMessageDeletion: true,
                 EnableFileDeletion: true,
-                EnableBoardsDeletion: true,
                 MessageRetentionDays: 100,
+                MessageRetentionHours: 2400,
                 FileRetentionDays: 100,
-                BoardsRetentionDays: 100,
+                FileRetentionHours: 2400,
                 DeletionJobStartTime: '00:15',
             },
         },
         customPolicies: {},
         customPoliciesCount: 0,
+        globalMessageRetentionHours: '2400',
+        globalFileRetentionHours: '2400',
         actions: {
             getDataRetentionCustomPolicies: jest.fn().mockResolvedValue([]),
             createJob: jest.fn(),
@@ -83,7 +85,6 @@ describe('components/admin_console/data_retention_settings/data_retention_settin
         const props = baseProps;
         props.config.DataRetentionSettings.EnableMessageDeletion = false;
         props.config.DataRetentionSettings.EnableFileDeletion = false;
-        props.config.DataRetentionSettings.EnableBoardsDeletion = false;
         const wrapper = shallow(
             <DataRetentionSettings
                 {...props}

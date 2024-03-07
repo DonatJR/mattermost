@@ -1,13 +1,11 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {debounce} from 'lodash';
 import React from 'react';
 import {FormattedMessage} from 'react-intl';
-import {debounce} from 'lodash';
 
-import {ActionFunc} from 'mattermost-redux/types/actions';
-
-import {
+import type {
     LogFilter,
     LogLevels,
     LogObject,
@@ -24,11 +22,11 @@ type Props = {
     plainLogs: string[];
     isPlainLogs: boolean;
     actions: {
-        getLogs: (logFilter: LogFilter) => ActionFunc;
+        getLogs: (logFilter: LogFilter) => Promise<unknown>;
         getPlainLogs: (
             page?: number | undefined,
             perPage?: number | undefined
-        ) => ActionFunc;
+        ) => Promise<unknown>;
     };
 };
 

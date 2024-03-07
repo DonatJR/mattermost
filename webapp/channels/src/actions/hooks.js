@@ -1,6 +1,10 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+/**
+ * @param {Post} originalPost
+ * @returns {NewActionFuncAsync<Post>}
+ */
 export function runMessageWillBePostedHooks(originalPost) {
     return async (dispatch, getState) => {
         const hooks = getState().plugins.components.MessageWillBePosted;
@@ -87,5 +91,33 @@ export function runMessageWillBeUpdatedHooks(newPost, oldPost) {
         }
 
         return {data: post};
+    };
+}
+
+export function runDesktopNotificationHooks(post, msgProps, channel, teamId, args) {
+    return async (dispatch, getState) => {
+        const hooks = getState().plugins.components.DesktopNotificationHooks;
+        if (!hooks || hooks.length === 0) {
+            return {args};
+        }
+
+        let nextArgs = args;
+        for (const hook of hooks) {
+            const result = await hook.hook(post, msgProps, channel, teamId, nextArgs); // eslint-disable-line no-await-in-loop
+
+            if (result) {
+                if (result.error) {
+                    return {error: result.error};
+                }
+
+                if (!result.args) {
+                    return {error: 'returned empty args'};
+                }
+
+                nextArgs = result.args;
+            }
+        }
+
+        return {args: nextArgs};
     };
 }
